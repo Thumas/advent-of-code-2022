@@ -21,94 +21,85 @@ class TreeGrid(treeSizes: Array<Array<Int>>) {
         return widths[0]
     }
 
-
-    enum class Direction(val deltaX: Int, val deltaY: Int) {
-        UP(0, -1), LEFT(-1, 0), DOWN(0, 1), RIGHT(1, 0)
-    }
-
-    class Tree(val size: Int) {
-        private val visibleFromDirection = mutableMapOf<Direction, Boolean>()
-
-        fun setVisible(direction: Direction) {
-            visibleFromDirection[direction] = true
-        }
-
-        fun setInvisible(direction: Direction) {
-            visibleFromDirection[direction] = false
-        }
-
-        /**
-         * Returns true, if the tree is visible from the given direction, false if it is not visible and null, if no
-         * visibility information is available.
-         */
-        fun isVisible(direction: Direction): Boolean? =
-            if (visibleFromDirection.containsKey(direction)) visibleFromDirection[direction] else null
-
-        /**
-         * Returns true, if the tree is visible from some direction, false if it is definitely not visible from any
-         * direction, and null otherwise (i.e. if it is invisible from some directions and the rest has not been
-         * determined yet).
-         */
-        fun isVisible(): Boolean? {
-            val isVisibleFromSomeDirection = visibleFromDirection.values.any { it }
-
-            return if (isVisibleFromSomeDirection) {
-                true
-            } else if (visibleFromDirection.size < 4){
-                null
-            } else {
-                false
-            }
-        }
-
-        override fun toString(): String {
-            return "Tree(size=$size, visibleFromDirection=$visibleFromDirection)"
-        }
-    }
-
     fun getNumberOfVisibleTrees(): Int {
-        setBorderVisible()
-        for (row in 1 until maxRow) {
-            for (column in 1 until maxColumn) {
-                val tree = trees[row][column]
-                if (tree.isVisible() == null) {
-                    checkNeighbours(row, column, tree)
-                }
-            }
-        }
+        setBorderVisibleFromOutside()
+        gridCells()
+            .filter { (_, tree) -> tree.isVisible() == null }
+            .forEach { (position, tree) -> checkNeighbours(position, tree) }
 
         return allTrees().count { it.isVisible() == true }
     }
 
-    private fun setBorderVisible() {
-        trees[0].forEach { it.setVisible(Direction.UP) }
-        trees[maxRow].forEach { it.setVisible(Direction.DOWN) }
-        IntRange(0, maxRow).forEach { row ->
+    private fun setBorderVisibleFromOutside() {
+        for (tree in trees[0]) {
+            tree.setVisible(Direction.UP)
+        }
+        for (tree in trees[maxRow]) {
+            tree.setVisible(Direction.DOWN)
+        }
+        for (row in 0..maxRow) {
             trees[row][0].setVisible(Direction.LEFT)
             trees[row][maxColumn].setVisible(Direction.RIGHT)
         }
     }
 
-    private fun checkNeighbours(row: Int, column: Int, tree: Tree) {
-        val distancesToBorder = mapOf(
+    private fun gridCells(): Sequence<Pair<GridPosition, Tree>> =
+        IntRange(0, maxRow).flatMap { row ->
+            IntRange(0, maxColumn).map { column ->
+                GridPosition(row, column)
+            }.map { position ->
+                position to trees.at(position)
+            }
+        }.asSequence()
+
+    inner class GridPosition(val row: Int, val column: Int) {
+        private val grid = this@TreeGrid
+        infix fun isIn(grid: TreeGrid) = row in 0..grid.maxRow && column in 0..maxColumn
+
+        fun distancesToBorder(grid: TreeGrid) = mapOf(
             Direction.UP to row,
             Direction.LEFT to column,
-            Direction.DOWN to maxRow - row,
-            Direction.RIGHT to maxColumn - column
+            Direction.DOWN to grid.maxRow - row,
+            Direction.RIGHT to grid.maxColumn - column
         )
 
-        for ((direction, _) in distancesToBorder.entries.sortedBy { it.value }) {
-            if (checkNeighbour(row, column, direction, tree)) return
+        operator fun plus(direction: Direction) = GridPosition(row + direction.deltaY, column + direction.deltaX)
+
+        /**
+         * Returns an iterator along the grid in the given direction. The first element returned by {@link Iterator#next()}
+         * is the next position next to this position in the given direction.
+         */
+        fun iterator(direction: Direction) = object : Iterator<GridPosition> {
+            private var currentPosition = this@GridPosition
+
+            override fun hasNext() = (currentPosition + direction) isIn grid
+
+            override fun next(): GridPosition {
+                currentPosition += direction
+
+                return currentPosition
+            }
+
+        }
+    }
+
+    private fun <T> Array<Array<T>>.at(position: GridPosition) = this[position.row][position.column]
+
+    private fun checkNeighbours(position: GridPosition, tree: Tree) {
+        val directionsSortedByDistanceToBorder =
+            position.distancesToBorder(this).entries.sortedBy { it.value }.map { it.key }
+
+        for (direction in directionsSortedByDistanceToBorder) {
+            if (checkNeighbour(position, direction, tree)) return
         }
     }
 
     private fun checkNeighbour(
-        row: Int,
-        column: Int,
+        position: GridPosition,
         direction: Direction,
         tree: Tree
     ): Boolean {
-        val neighbouringTree = getNeighbouringTree(row, column, direction)
+        val neighbouringTree = getNeighbouringTree(position, direction) ?: return true
 
         if (neighbouringTree.size >= tree.size) {
             tree.setInvisible(direction)
@@ -116,40 +107,81 @@ class TreeGrid(treeSizes: Array<Array<Int>>) {
         }
 
         val neighbouringTreeVisible =
-            neighbouringTree.isVisible(direction) ?: checkNextNeighbour(row, column, direction, neighbouringTree)
+            neighbouringTree.isVisible(direction) ?: checkNextNeighbour(
+                position,
+                direction,
+                neighbouringTree
+            )
 
         return if (neighbouringTreeVisible) {
             tree.setVisible(direction)
             true
         } else {
-            checkNextNeighbour(row, column, direction, tree)
+            checkNextNeighbour(position, direction, tree)
         }
     }
 
-    private fun getNeighbouringTree(row: Int, column: Int, direction: Direction) =
-        trees[moveRow(row, direction)][moveColumn(column, direction)]
+    private fun getNeighbouringTree(position: GridPosition, direction: Direction): Tree? {
+        val neighbourCell = position + direction
+        return if (neighbourCell isIn this) {
+            trees.at(neighbourCell)
+        } else {
+            null
+        }
+    }
 
     private fun checkNextNeighbour(
-        row: Int,
-        column: Int,
+        position: GridPosition,
         direction: Direction,
         neighbouringTree: Tree
-    ) = checkNeighbour(moveRow(row, direction), moveColumn(column, direction), direction, neighbouringTree)
-
-    private fun moveRow(row: Int, direction: Direction) = row + direction.deltaY
-
-    private fun moveColumn(column: Int, direction: Direction) = column + direction.deltaX
+    ): Boolean {
+        return checkNeighbour(position + direction, direction, neighbouringTree)
+    }
 
     private fun allTrees(): Sequence<Tree> = trees.flatten().asSequence()
+
+    fun getHighestScenicScore(): Int {
+        for ((position, tree) in gridCells()) {
+            for (direction in Direction.values()) {
+                computeVisibilities(position, direction, tree)
+            }
+        }
+
+        return allTrees().map { it.getScenicScore() }.max()
+    }
+
+    private fun computeVisibilities(
+        position: GridPosition,
+        direction: Direction,
+        pointOfView: Tree
+    ) {
+        val treesInLine = mutableListOf<Tree>()
+
+        position.iterator(direction).asSequence()
+            .map { trees.at(it) }
+            .takeWhile { neighbouringTree -> pointOfView.addVisibleTree(direction, neighbouringTree) }
+            .takeWhile { neighbouringTree -> pointOfView.isBiggerThan(neighbouringTree) }
+            .forEach { neighbouringTree ->
+                treesInLine.removeIf { otherTree ->
+                    !otherTree.addVisibleTree(
+                        direction,
+                        neighbouringTree
+                    ) || !otherTree.isBiggerThan(neighbouringTree)
+                }
+
+                treesInLine.add(neighbouringTree)
+            }
+    }
 }
 
 fun main() {
     val input = readInputLines(TreeGrid::class)
+    val treeSizes = input.map { it.map { char -> char.digitToInt() }.toTypedArray() }.toTypedArray()
+    val treeGrid = TreeGrid(treeSizes)
 
-    fun part1(input: List<String>): Int {
-        val treeSizes = input.map { it.map { char -> char.digitToInt() }.toTypedArray() }.toTypedArray()
-        return TreeGrid(treeSizes).getNumberOfVisibleTrees()
-    }
+    fun part1() = treeGrid.getNumberOfVisibleTrees()
+    fun part2() = treeGrid.getHighestScenicScore()
 
-    println("The number of visible trees in the grid is ${part1(input)}.")
+    println("The number of visible trees in the grid is ${part1()}.")
+    println("The highest scenic score is ${part2()}.")
 }
