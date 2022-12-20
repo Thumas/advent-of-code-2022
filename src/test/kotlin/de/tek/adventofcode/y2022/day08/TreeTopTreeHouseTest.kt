@@ -1,5 +1,6 @@
 package de.tek.adventofcode.y2022.day08
 
+import de.tek.adventofcode.y2022.util.math.Direction
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.data.blocking.forAll

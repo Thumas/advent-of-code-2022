@@ -1,5 +1,6 @@
 package de.tek.adventofcode.y2022.day08
 
+import de.tek.adventofcode.y2022.util.math.Direction
 import de.tek.adventofcode.y2022.util.readInputLines
 
 class TreeGrid(treeSizes: Array<Array<Int>>) {
