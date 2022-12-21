@@ -3,6 +3,7 @@ package de.tek.adventofcode.y2022.day08
 import de.tek.adventofcode.y2022.util.math.Direction
 import de.tek.adventofcode.y2022.util.math.Grid
 import de.tek.adventofcode.y2022.util.math.Point
+import de.tek.adventofcode.y2022.util.math.isIn
 import de.tek.adventofcode.y2022.util.readInputLines
 
 class TreeGrid(treeSizes: Array<Array<Int>>) : Grid<Int, Tree>(treeSizes, { _, size -> Tree(size) })  {
@@ -35,7 +36,7 @@ class TreeGrid(treeSizes: Array<Array<Int>>) : Grid<Int, Tree>(treeSizes, { _, s
             IntRange(0, maxColumn).map { column ->
                 GridPosition(row, column)
             }.map { position ->
-                position to at(position)
+                position to at(position)!!
             }
         }.asSequence()
 
@@ -46,7 +47,7 @@ class TreeGrid(treeSizes: Array<Array<Int>>) : Grid<Int, Tree>(treeSizes, { _, s
 
         fun toPoint() = Point(column, row)
 
-        infix fun isIn(grid: TreeGrid) = row in 0..grid.maxRow && column in 0..maxColumn
+        infix fun isIn(grid: TreeGrid) = toPoint() isIn grid
 
         fun distancesToBorder(grid: TreeGrid) = mapOf(
             Direction.UP to row,
@@ -147,7 +148,7 @@ class TreeGrid(treeSizes: Array<Array<Int>>) : Grid<Int, Tree>(treeSizes, { _, s
         val treesInLine = mutableListOf<Tree>()
 
         position.iterator(direction).asSequence()
-            .map { at(it) }
+            .map { at(it)!! }
             .takeWhile { neighbouringTree -> pointOfView.addVisibleTree(direction, neighbouringTree) }
             .takeWhile { neighbouringTree -> pointOfView.isBiggerThan(neighbouringTree) }
             .forEach { neighbouringTree ->

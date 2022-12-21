@@ -8,7 +8,7 @@ import kotlin.reflect.KClass
 fun <T : Any> readInputLines(classToTest: KClass<T>): List<String> {
     val resourcePath = getPackageName(classToTest)
     return getInputStream(resourcePath)?.bufferedReader()?.readLines()
-        ?: throw IOException("Could not read data from file $resourcePath.")
+        ?: throw IOException("Could not read data from file $resourcePath/input.txt.")
 }
 
 fun <T : Any> getInputStream(classToTest: KClass<T>): BufferedReader {

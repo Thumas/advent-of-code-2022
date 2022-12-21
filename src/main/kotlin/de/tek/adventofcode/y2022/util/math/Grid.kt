@@ -21,7 +21,11 @@ open class Grid<S, T>(private val array: Array<Array<S>>, private val transform:
         return widths[0]
     }
 
-    protected fun at(position: Point) = grid[position.y][position.x]
+    fun at(position: Point) = if (contains(position)) grid[position.y][position.x] else null
 
     override fun iterator(): Iterator<T> = grid.flatten().iterator()
+
+    infix fun contains(position: Point) = position.y in 0..maxRow && position.x in 0..maxColumn
 }
+
+infix fun <S,T> Point.isIn(grid: Grid<S,T>) = grid contains this
