@@ -1,26 +1,12 @@
 package de.tek.adventofcode.y2022.day08
 
 import de.tek.adventofcode.y2022.util.math.Direction
+import de.tek.adventofcode.y2022.util.math.Grid
+import de.tek.adventofcode.y2022.util.math.Point
 import de.tek.adventofcode.y2022.util.readInputLines
 
-class TreeGrid(treeSizes: Array<Array<Int>>) {
-    private val trees: Array<Array<Tree>>
-    private val maxRow = treeSizes.size - 1
-    private val maxColumn: Int
-
-    init {
-        maxColumn = getGridWidth(treeSizes) - 1
-        trees = Array(treeSizes.size) { row -> Array(maxColumn + 1) { column -> Tree(treeSizes[row][column]) } }
-    }
-
-    private fun getGridWidth(treeSizes: Array<Array<Int>>): Int {
-        val widths = treeSizes.map { it.size }.distinct()
-        if (widths.size > 1) {
-            throw IllegalArgumentException("The given tree sizes must form a rectangular grid.")
-        }
-
-        return widths[0]
-    }
+class TreeGrid(treeSizes: Array<Array<Int>>) : Grid<Int, Tree>(treeSizes, { _, size -> Tree(size) })  {
+    private val trees = grid
 
     fun getNumberOfVisibleTrees(): Int {
         setBorderVisibleFromOutside()
@@ -49,12 +35,17 @@ class TreeGrid(treeSizes: Array<Array<Int>>) {
             IntRange(0, maxColumn).map { column ->
                 GridPosition(row, column)
             }.map { position ->
-                position to trees.at(position)
+                position to at(position)
             }
         }.asSequence()
 
-    inner class GridPosition(val row: Int, val column: Int) {
+    private fun at(gridPosition: GridPosition) = super.at(gridPosition.toPoint())
+
+    inner class GridPosition(private val row: Int, private val column: Int) {
         private val grid = this@TreeGrid
+
+        fun toPoint() = Point(column, row)
+
         infix fun isIn(grid: TreeGrid) = row in 0..grid.maxRow && column in 0..maxColumn
 
         fun distancesToBorder(grid: TreeGrid) = mapOf(
@@ -80,11 +71,8 @@ class TreeGrid(treeSizes: Array<Array<Int>>) {
 
                 return currentPosition
             }
-
         }
     }
-
-    private fun <T> Array<Array<T>>.at(position: GridPosition) = this[position.row][position.column]
 
     private fun checkNeighbours(position: GridPosition, tree: Tree) {
         val directionsSortedByDistanceToBorder =
@@ -125,7 +113,7 @@ class TreeGrid(treeSizes: Array<Array<Int>>) {
     private fun getNeighbouringTree(position: GridPosition, direction: Direction): Tree? {
         val neighbourCell = position + direction
         return if (neighbourCell isIn this) {
-            trees.at(neighbourCell)
+            at(neighbourCell)
         } else {
             null
         }
@@ -139,7 +127,7 @@ class TreeGrid(treeSizes: Array<Array<Int>>) {
         return checkNeighbour(position + direction, direction, neighbouringTree)
     }
 
-    private fun allTrees(): Sequence<Tree> = trees.flatten().asSequence()
+    private fun allTrees(): Sequence<Tree> = this.iterator().asSequence()
 
     fun getHighestScenicScore(): Int {
         for ((position, tree) in gridCells()) {
@@ -159,7 +147,7 @@ class TreeGrid(treeSizes: Array<Array<Int>>) {
         val treesInLine = mutableListOf<Tree>()
 
         position.iterator(direction).asSequence()
-            .map { trees.at(it) }
+            .map { at(it) }
             .takeWhile { neighbouringTree -> pointOfView.addVisibleTree(direction, neighbouringTree) }
             .takeWhile { neighbouringTree -> pointOfView.isBiggerThan(neighbouringTree) }
             .forEach { neighbouringTree ->
