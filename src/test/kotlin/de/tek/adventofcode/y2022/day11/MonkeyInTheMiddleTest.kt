@@ -4,6 +4,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.data.blocking.forAll
 import io.kotest.data.row
+import io.kotest.inspectors.forAll
 import io.kotest.matchers.shouldBe
 
 class OperandTest : StringSpec({
@@ -12,13 +13,7 @@ class OperandTest : StringSpec({
     }
 
     "Given some integer as String, parseFrom returns a FixedValue." {
-        forAll(
-            row(1),
-            row(0),
-            row(-1),
-            row(15),
-            row(195109)
-        ) {
+        listOf(1,0,-1,15,195109).map { it.toBigInteger() }.forAll {
             Operand.parseFrom(it.toString()) shouldBe Operand.FixedValue(it)
         }
     }
@@ -63,7 +58,7 @@ class OperandTest : StringSpec({
             row(195109, 15),
             row(195109, 195109)
         ) { first, second ->
-            Operand.FixedValue(first).evaluate(second) shouldBe first
+            Operand.FixedValue(first.toBigInteger()).evaluate(second.toBigInteger()) shouldBe first
         }
     }
 
@@ -75,7 +70,7 @@ class OperandTest : StringSpec({
             row(15),
             row(195109)
         ) {
-            Operand.OldValue.evaluate(it) shouldBe it
+            Operand.OldValue.evaluate(it.toBigInteger()) shouldBe it
         }
     }
 })
@@ -113,7 +108,7 @@ class OperatorTest : StringSpec({
             row(151, -50, 101)
         ) { first, second, expectedResult ->
             with(Operator.PLUS) {
-                first op second shouldBe expectedResult
+                first.toBigInteger() op second.toBigInteger() shouldBe expectedResult
             }
         }
     }
@@ -127,7 +122,7 @@ class OperatorTest : StringSpec({
             row(151, -50, -7550)
         ) { first, second, expectedResult ->
             with(Operator.TIMES) {
-                first op second shouldBe expectedResult
+                first.toBigInteger() op second.toBigInteger() shouldBe expectedResult
             }
         }
     }
@@ -142,7 +137,7 @@ class OperatorTest : StringSpec({
             row(20, 4, 5),
         ) { first, second, expectedResult ->
             with(Operator.DIV) {
-                first op second shouldBe expectedResult
+                first.toBigInteger() op second.toBigInteger() shouldBe expectedResult
             }
         }
     }
@@ -151,49 +146,49 @@ class OperatorTest : StringSpec({
 class OperationTest : StringSpec({
     "Given two operands, an operator and an integer, the constructed Operator applied to the integer returns the expected result." {
         forAll(
-            row(Operand.FixedValue(1), Operand.FixedValue(3), Operator.PLUS, 0, 4),
-            row(Operand.FixedValue(3), Operand.FixedValue(1), Operator.PLUS, 0, 4),
-            row(Operand.FixedValue(1), Operand.FixedValue(3), Operator.PLUS, -1, 4),
-            row(Operand.FixedValue(3), Operand.FixedValue(1), Operator.PLUS, -1, 4),
-            row(Operand.FixedValue(1), Operand.FixedValue(3), Operator.PLUS, 100, 4),
-            row(Operand.FixedValue(3), Operand.FixedValue(1), Operator.PLUS, 100, 4),
-            row(Operand.FixedValue(1), Operand.FixedValue(3), Operator.TIMES, 0, 3),
-            row(Operand.FixedValue(3), Operand.FixedValue(1), Operator.TIMES, 0, 3),
-            row(Operand.FixedValue(1), Operand.FixedValue(3), Operator.TIMES, -1, 3),
-            row(Operand.FixedValue(3), Operand.FixedValue(1), Operator.TIMES, -1, 3),
-            row(Operand.FixedValue(1), Operand.FixedValue(3), Operator.TIMES, 100, 3),
-            row(Operand.FixedValue(3), Operand.FixedValue(1), Operator.TIMES, 100, 3),
-            row(Operand.FixedValue(1), Operand.OldValue, Operator.PLUS, 0, 1),
-            row(Operand.FixedValue(3), Operand.OldValue, Operator.PLUS, 0, 3),
-            row(Operand.FixedValue(1), Operand.OldValue, Operator.PLUS, -1, 0),
-            row(Operand.FixedValue(3), Operand.OldValue, Operator.PLUS, -1, 2),
-            row(Operand.FixedValue(1), Operand.OldValue, Operator.PLUS, 100, 101),
-            row(Operand.FixedValue(3), Operand.OldValue, Operator.PLUS, 100, 103),
-            row(Operand.OldValue, Operand.FixedValue(1), Operator.PLUS, 0, 1),
-            row(Operand.OldValue, Operand.FixedValue(3), Operator.PLUS, 0, 3),
-            row(Operand.OldValue, Operand.FixedValue(1), Operator.PLUS, -1, 0),
-            row(Operand.OldValue, Operand.FixedValue(3), Operator.PLUS, -1, 2),
-            row(Operand.OldValue, Operand.FixedValue(1), Operator.PLUS, 100, 101),
-            row(Operand.OldValue, Operand.FixedValue(3), Operator.PLUS, 100, 103),
-            row(Operand.FixedValue(1), Operand.OldValue, Operator.TIMES, 0, 0),
-            row(Operand.FixedValue(3), Operand.OldValue, Operator.TIMES, 0, 0),
-            row(Operand.FixedValue(1), Operand.OldValue, Operator.TIMES, -1, -1),
-            row(Operand.FixedValue(3), Operand.OldValue, Operator.TIMES, -1, -3),
-            row(Operand.FixedValue(1), Operand.OldValue, Operator.TIMES, 100, 100),
-            row(Operand.FixedValue(3), Operand.OldValue, Operator.TIMES, 100, 300),
-            row(Operand.OldValue, Operand.FixedValue(1), Operator.TIMES, 0, 0),
-            row(Operand.OldValue, Operand.FixedValue(3), Operator.TIMES, 0, 0),
-            row(Operand.OldValue, Operand.FixedValue(1), Operator.TIMES, -1, -1),
-            row(Operand.OldValue, Operand.FixedValue(3), Operator.TIMES, -1, -3),
-            row(Operand.OldValue, Operand.FixedValue(1), Operator.TIMES, 100, 100),
-            row(Operand.OldValue, Operand.FixedValue(3), Operator.TIMES, 100, 300),
-            row(Operand.OldValue, Operand.FixedValue(3), Operator.DIV, 3, 1),
-            row(Operand.OldValue, Operand.FixedValue(3), Operator.DIV, 6, 2),
-            row(Operand.OldValue, Operand.FixedValue(3), Operator.DIV, -3, -1),
-            row(Operand.OldValue, Operand.FixedValue(3), Operator.DIV, 5, 1),
-            row(Operand.OldValue, Operand.FixedValue(3), Operator.DIV, 125, 41),
+            row(Operand.FixedValue(1.toBigInteger()), Operand.FixedValue(3.toBigInteger()), Operator.PLUS, 0, 4),
+            row(Operand.FixedValue(3.toBigInteger()), Operand.FixedValue(1.toBigInteger()), Operator.PLUS, 0, 4),
+            row(Operand.FixedValue(1.toBigInteger()), Operand.FixedValue(3.toBigInteger()), Operator.PLUS, -1, 4),
+            row(Operand.FixedValue(3.toBigInteger()), Operand.FixedValue(1.toBigInteger()), Operator.PLUS, -1, 4),
+            row(Operand.FixedValue(1.toBigInteger()), Operand.FixedValue(3.toBigInteger()), Operator.PLUS, 100, 4),
+            row(Operand.FixedValue(3.toBigInteger()), Operand.FixedValue(1.toBigInteger()), Operator.PLUS, 100, 4),
+            row(Operand.FixedValue(1.toBigInteger()), Operand.FixedValue(3.toBigInteger()), Operator.TIMES, 0, 3),
+            row(Operand.FixedValue(3.toBigInteger()), Operand.FixedValue(1.toBigInteger()), Operator.TIMES, 0, 3),
+            row(Operand.FixedValue(1.toBigInteger()), Operand.FixedValue(3.toBigInteger()), Operator.TIMES, -1, 3),
+            row(Operand.FixedValue(3.toBigInteger()), Operand.FixedValue(1.toBigInteger()), Operator.TIMES, -1, 3),
+            row(Operand.FixedValue(1.toBigInteger()), Operand.FixedValue(3.toBigInteger()), Operator.TIMES, 100, 3),
+            row(Operand.FixedValue(3.toBigInteger()), Operand.FixedValue(1.toBigInteger()), Operator.TIMES, 100, 3),
+            row(Operand.FixedValue(1.toBigInteger()), Operand.OldValue, Operator.PLUS, 0, 1),
+            row(Operand.FixedValue(3.toBigInteger()), Operand.OldValue, Operator.PLUS, 0, 3),
+            row(Operand.FixedValue(1.toBigInteger()), Operand.OldValue, Operator.PLUS, -1, 0),
+            row(Operand.FixedValue(3.toBigInteger()), Operand.OldValue, Operator.PLUS, -1, 2),
+            row(Operand.FixedValue(1.toBigInteger()), Operand.OldValue, Operator.PLUS, 100, 101),
+            row(Operand.FixedValue(3.toBigInteger()), Operand.OldValue, Operator.PLUS, 100, 103),
+            row(Operand.OldValue, Operand.FixedValue(1.toBigInteger()), Operator.PLUS, 0, 1),
+            row(Operand.OldValue, Operand.FixedValue(3.toBigInteger()), Operator.PLUS, 0, 3),
+            row(Operand.OldValue, Operand.FixedValue(1.toBigInteger()), Operator.PLUS, -1, 0),
+            row(Operand.OldValue, Operand.FixedValue(3.toBigInteger()), Operator.PLUS, -1, 2),
+            row(Operand.OldValue, Operand.FixedValue(1.toBigInteger()), Operator.PLUS, 100, 101),
+            row(Operand.OldValue, Operand.FixedValue(3.toBigInteger()), Operator.PLUS, 100, 103),
+            row(Operand.FixedValue(1.toBigInteger()), Operand.OldValue, Operator.TIMES, 0, 0),
+            row(Operand.FixedValue(3.toBigInteger()), Operand.OldValue, Operator.TIMES, 0, 0),
+            row(Operand.FixedValue(1.toBigInteger()), Operand.OldValue, Operator.TIMES, -1, -1),
+            row(Operand.FixedValue(3.toBigInteger()), Operand.OldValue, Operator.TIMES, -1, -3),
+            row(Operand.FixedValue(1.toBigInteger()), Operand.OldValue, Operator.TIMES, 100, 100),
+            row(Operand.FixedValue(3.toBigInteger()), Operand.OldValue, Operator.TIMES, 100, 300),
+            row(Operand.OldValue, Operand.FixedValue(1.toBigInteger()), Operator.TIMES, 0, 0),
+            row(Operand.OldValue, Operand.FixedValue(3.toBigInteger()), Operator.TIMES, 0, 0),
+            row(Operand.OldValue, Operand.FixedValue(1.toBigInteger()), Operator.TIMES, -1, -1),
+            row(Operand.OldValue, Operand.FixedValue(3.toBigInteger()), Operator.TIMES, -1, -3),
+            row(Operand.OldValue, Operand.FixedValue(1.toBigInteger()), Operator.TIMES, 100, 100),
+            row(Operand.OldValue, Operand.FixedValue(3.toBigInteger()), Operator.TIMES, 100, 300),
+            row(Operand.OldValue, Operand.FixedValue(3.toBigInteger()), Operator.DIV, 3, 1),
+            row(Operand.OldValue, Operand.FixedValue(3.toBigInteger()), Operator.DIV, 6, 2),
+            row(Operand.OldValue, Operand.FixedValue(3.toBigInteger()), Operator.DIV, -3, -1),
+            row(Operand.OldValue, Operand.FixedValue(3.toBigInteger()), Operator.DIV, 5, 1),
+            row(Operand.OldValue, Operand.FixedValue(3.toBigInteger()), Operator.DIV, 125, 41),
         ) { firstOperand, secondOperand, operator, value, expectedResult ->
-            Operation(firstOperand, secondOperand, operator).apply(value) shouldBe expectedResult
+            Operation(firstOperand, secondOperand, operator).apply(value.toBigInteger()) shouldBe expectedResult
         }
     }
 
@@ -236,7 +231,7 @@ class OperationTest : StringSpec({
             row("new = old * 1", 100, 100),
             row("new = old * 3", 100, 300)
         ) { operationString, value, expectedResult ->
-            Operation.parseFrom(operationString).apply(value) shouldBe expectedResult
+            Operation.parseFrom(operationString).apply(value.toBigInteger()) shouldBe expectedResult
         }
     }
 })
@@ -272,7 +267,7 @@ Monkey 3:
     If false: throw to monkey 1""".split("\n")
 
         MonkeyBusiness.worryReductionEnabled = true
-        MonkeyBusiness.parseFrom(input).playRounds(20) shouldBe 10605
+        MonkeyBusiness.parseFrom(input).playRounds(20) shouldBe 10605.toBigInteger()
     }
 
     "Given the example, without worry reduction, the calculated monkey business after 10000 is 2713310158." {
@@ -305,6 +300,6 @@ Monkey 3:
     If false: throw to monkey 1""".split("\n")
 
         MonkeyBusiness.worryReductionEnabled = false
-        MonkeyBusiness.parseFrom(input).playRounds(10000) shouldBe 2713310158
+        MonkeyBusiness.parseFrom(input).playRounds(10000) shouldBe 2713310158.toBigInteger()
     }
 })
