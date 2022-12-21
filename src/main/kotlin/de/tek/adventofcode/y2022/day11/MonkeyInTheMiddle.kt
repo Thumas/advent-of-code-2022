@@ -3,15 +3,15 @@ package de.tek.adventofcode.y2022.day11
 import de.tek.adventofcode.y2022.util.readInputLines
 import java.util.concurrent.atomic.AtomicInteger
 
-class Item(initialWorryLevel: Int) {
-    var worryLevel = initialWorryLevel
+open class Item(initialWorryLevel: Int) {
+    private var worryLevel = initialWorryLevel
         private set
 
     fun applyOperation(operation: Operation) {
         worryLevel = operation.apply(worryLevel)
     }
 
-    fun reduceWorry() {
+    open fun reduceWorry() {
         worryLevel /= 3
     }
 
@@ -20,6 +20,10 @@ class Item(initialWorryLevel: Int) {
     override fun toString(): String {
         return "Item(worryLevel=$worryLevel)"
     }
+}
+
+class FragileItem(initialWorryLevel: Int) : Item(initialWorryLevel) {
+    override fun reduceWorry() {}
 }
 
 class Operation(firstOperand: Operand, secondOperand: Operand, private val operator: Operator) {
@@ -91,7 +95,12 @@ enum class Operator(private val char: Char, private val biFunction: (Int, Int) -
     }
 }
 
-class Monkey(private val name: String, initialItems: List<Item>, private val operation: Operation, private val divisor: Int) {
+class Monkey(
+    private val name: String,
+    initialItems: List<Item>,
+    private val operation: Operation,
+    private val divisor: Int
+) {
     private val currentItems = initialItems.toMutableList()
     private lateinit var firstMonkeyFriend: Monkey
     private lateinit var secondMonkeyFriend: Monkey
@@ -161,6 +170,9 @@ class MonkeyBusiness private constructor(private val monkeys: Map<Int, Monkey>) 
     }
 
     companion object {
+
+        var worryReductionEnabled = true
+
         private val regexPerLine = arrayOf(
             Regex("""Monkey (\d+):"""),
             Regex("""\s*Starting items: (.*)"""),
@@ -226,7 +238,9 @@ class MonkeyBusiness private constructor(private val monkeys: Map<Int, Monkey>) 
         }
 
         private fun parseItems(itemString: String): List<Item> =
-            itemString.split(",").map(String::trim).map(String::toInt).map { Item(it) }
+            itemString.split(",").map(String::trim).map(String::toInt).map(::newItem)
+
+        private fun newItem(worry: Int) = if (worryReductionEnabled) Item(worry) else FragileItem(worry)
 
         private fun associateFriends(friendDescriptions: Map<Int, List<String>>, monkeys: Map<Int, Monkey>) {
             friendDescriptions
@@ -265,8 +279,18 @@ fun main() {
     val input = readInputLines(MonkeyBusiness::class)
 
     fun part1(input: List<String>): Int {
+        MonkeyBusiness.worryReductionEnabled = true
         return MonkeyBusiness.parseFrom(input).playRounds(20)
     }
 
+    fun part2(input: List<String>): Int {
+        MonkeyBusiness.worryReductionEnabled = false
+        return MonkeyBusiness.parseFrom(input).playRounds(10000)
+    }
+
     println("The level of monkey business after 20 rounds of stuff-slinging simian shenanigans is ${part1(input)}.")
+    println(
+        "Without worry reduction, " +
+                "the level of monkey business after 10000 rounds of stuff-slinging simian shenanigans is ${part2(input)}."
+    )
 }
