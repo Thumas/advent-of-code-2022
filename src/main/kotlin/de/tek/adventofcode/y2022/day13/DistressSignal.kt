@@ -96,6 +96,8 @@ fun main() {
     val input = readInputLines(PacketList::class)
 
     println("The sum of the indices of the pairs that are in right order is ${part1(input)}.")
+
+    println("The decoder key is ${part2(input)}.")
 }
 
 fun part1(input: List<String>): Int {
@@ -105,5 +107,26 @@ fun part1(input: List<String>): Int {
     return packetPairs.map { pair -> pair.first <= pair.second }.withIndex().filter { it.value }.sumOf { it.index + 1 }
 }
 
+fun part2(input: List<String>): Int {
+    val packets = parsePackets(input)
+
+    fun createDivider(int: Int) = Packet(Packet(Integer(int)))
+    val firstDivider = createDivider(2)
+    val secondDivider = createDivider(6)
+
+    val packetsWithDividers = packets + firstDivider + secondDivider
+    val sortedPackets = packetsWithDividers.sorted()
+
+    fun Iterable<Packet>.oneBasedIndexOf(element: PacketContent) = indexOf(element) + 1
+
+    val firstDividerIndex = sortedPackets.oneBasedIndexOf(firstDivider)
+    val secondDividerIndex = sortedPackets.oneBasedIndexOf(secondDivider)
+
+    return firstDividerIndex * secondDividerIndex
+}
+
 private fun parseTwoLinesAsPackets(it: List<String>) =
-    it.take(2).map(Json::parseToJsonElement).map { Packet.from(it) }
+    it.take(2).map(Json::parseToJsonElement).map(Packet::from)
+
+fun parsePackets(input: List<String>) =
+    input.filter { it.isNotBlank() }.map(Json::parseToJsonElement).map(Packet::from)

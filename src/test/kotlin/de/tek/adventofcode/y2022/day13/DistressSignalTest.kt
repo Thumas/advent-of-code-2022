@@ -84,8 +84,7 @@ class PacketTest : StringSpec({
 })
 
 class DistressSignalTest : StringSpec({
-    "Given the example, the indices of the packet pairs that are in the right order sum to 13." {
-        val input = """[1,1,3,1,1]
+    val input = """[1,1,3,1,1]
 [1,1,5,1,1]
 
 [[1],[2,3,4]]
@@ -109,6 +108,43 @@ class DistressSignalTest : StringSpec({
 [1,[2,[3,[4,[5,6,7]]]],8,9]
 [1,[2,[3,[4,[5,6,0]]]],8,9]""".split("\n")
 
+    "Given the example, the indices of the packet pairs that are in the right order sum to 13." {
         part1(input) shouldBe 13
+    }
+
+    "Given the example, the packets put in the correct order are as expected." {
+        val expectedStringRepresentations = """[]
+[[]]
+[[[]]]
+[1,1,3,1,1]
+[1,1,5,1,1]
+[[1],[2,3,4]]
+[1,[2,[3,[4,[5,6,0]]]],8,9]
+[1,[2,[3,[4,[5,6,7]]]],8,9]
+[[1],4]
+[[2]]
+[3]
+[[4,4],4,4]
+[[4,4],4,4,4]
+[[6]]
+[7,7,7]
+[7,7,7,7]
+[[8,7,6]]
+[9]""".split("\n")
+
+        val packets = parsePackets(input)
+
+        fun createDivider(int: Int) = Packet(Packet(Integer(int)))
+        val firstDivider = createDivider(2)
+        val secondDivider = createDivider(6)
+
+        val packetsWithDividers = packets + firstDivider + secondDivider
+        val sortedPackets = packetsWithDividers.sorted()
+
+        sortedPackets.map(Packet::toString) shouldBe expectedStringRepresentations
+    }
+
+    "Given the example, the decoder key is 140." {
+        part2(input) shouldBe 140
     }
 })
