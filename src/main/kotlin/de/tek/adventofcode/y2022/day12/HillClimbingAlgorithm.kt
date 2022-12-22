@@ -13,7 +13,7 @@ class HeightMap(map: Array<Array<Char>>) : Grid<Char, HeightMap.Cell>(map, { pos
 
         fun isGoal() = mark == 'E'
 
-        private fun getElevation() =
+        fun getElevation() =
             if (isStartingPosition()) {
                 0
             } else if (isGoal()) {
@@ -47,7 +47,7 @@ class HeightMap(map: Array<Array<Char>>) : Grid<Char, HeightMap.Cell>(map, { pos
         val (start, end) = findStartEnd()
 
         val shortestPath = Graph(edges).findShortestPath(start, end)
-        println(shortestPath)
+
         return shortestPath.size - 1
     }
 
@@ -85,6 +85,33 @@ class HeightMap(map: Array<Array<Char>>) : Grid<Char, HeightMap.Cell>(map, { pos
 
         return Pair(start, end)
     }
+
+    fun getLengthOfShortestPathFromLowestElevation(): Int {
+        val startEndCombinations = findPairsOfLowestElevationAndGoalCells()
+
+        val edges = computeEdges()
+        val graph = Graph(edges)
+
+        return startEndCombinations.map { graph.findShortestPath(it.first, it.second).size - 1 }.filter { it > 0 }.min()
+    }
+
+    private fun findPairsOfLowestElevationAndGoalCells(): List<Pair<Cell, Cell>> {
+        val lowestElevationCells = mutableListOf<Cell>()
+        var end: Cell? = null
+        for (cell in this) {
+            if (cell.getElevation() == 0) {
+                lowestElevationCells.add(cell)
+            } else if (cell.isGoal()) {
+                end = cell
+            }
+        }
+
+        if (end == null) {
+            throw IllegalArgumentException("The height map did not contain a goal.")
+        }
+
+        return lowestElevationCells.map { Pair(it, end) }
+    }
 }
 
 fun main() {
@@ -95,5 +122,15 @@ fun main() {
         return HeightMap(array).getLengthOfShortestPath()
     }
 
+
+    fun part2(input: List<String>): Int {
+        val array = input.map { it.toCharArray().toTypedArray() }.toTypedArray()
+        return HeightMap(array).getLengthOfShortestPathFromLowestElevation()
+    }
+
     println("The shortest path has length ${part1(input)}.")
+    println(
+        "The fewest steps required to move starting from any square with elevation a to the location that should " +
+                "get the best signal is ${part2(input)}."
+    )
 }

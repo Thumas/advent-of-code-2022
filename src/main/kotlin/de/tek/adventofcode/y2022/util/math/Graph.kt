@@ -3,6 +3,9 @@ package de.tek.adventofcode.y2022.util.math
 class Graph<T>(edges: Set<Pair<T, T>>) {
     private val neighbourMap = edges.groupBy(Pair<T, T>::first, Pair<T, T>::second)
 
+    /**
+     * Finds a shortest path between the given vertices in the graph. If there is no path, an empty list is returned.
+     */
     fun findShortestPath(start: T, end: T): List<T> {
         val distances = mutableMapOf(start to 0)
         val predecessor = mutableMapOf<T, T?>(start to null)
