@@ -1,6 +1,7 @@
 package de.tek.adventofcode.y2022.day11
 
 import de.tek.adventofcode.y2022.util.readInputLines
+import de.tek.adventofcode.y2022.util.splitByBlankLines
 import java.math.BigInteger
 
 open class Item(initialWorryLevel: Int, modulus: Int) {
@@ -181,7 +182,7 @@ class MonkeyBusiness private constructor(private val monkeys: Map<Int, Monkey>) 
         )
 
         fun parseFrom(input: List<String>): MonkeyBusiness {
-            val monkeyDescriptions = splitIntoMonkeyDescriptions(input).map { parseLines(it) }
+            val monkeyDescriptions = splitByBlankLines(input).map { parseLines(it) }
 
             val monkeyParser = createMonkeyParser(monkeyDescriptions)
 
@@ -190,18 +191,6 @@ class MonkeyBusiness private constructor(private val monkeys: Map<Int, Monkey>) 
             associateFriends(splitDescriptions.second, monkeys)
 
             return MonkeyBusiness(monkeys)
-        }
-
-        private fun splitIntoMonkeyDescriptions(input: List<String>): MutableList<MutableList<String>> {
-            val monkeyDescriptions = mutableListOf(mutableListOf<String>())
-            for (line in input) {
-                if (line.isBlank()) {
-                    monkeyDescriptions.add(mutableListOf())
-                } else {
-                    monkeyDescriptions.last().add(line)
-                }
-            }
-            return monkeyDescriptions
         }
 
         private fun parseLines(monkeyDescription: List<String>): List<String> =
