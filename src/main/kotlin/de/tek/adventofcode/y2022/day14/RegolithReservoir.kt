@@ -9,26 +9,35 @@ enum class Material(private val visualization: Char) {
     override fun toString() = visualization.toString()
 }
 
-
 class Cave(private val sandSource: Point, rockPositions: Set<Point>) {
     private val grid: GridWithPoints<Material>
 
     init {
+        val array = buildArrayFrom(rockPositions)
+
+        grid = Grid.withPoints(array)
+    }
+
+    private fun buildArrayFrom(rockPositions: Set<Point>): Array<Array<Material>> {
         val givenPositions = rockPositions + sandSource
         val lowestPosition = givenPositions.maxOfOrNull { it.y }
             ?: throw IllegalArgumentException("No rock positions given, so the sand flows unobstructed.")
         val rightmostPosition = givenPositions.maxOfOrNull { it.x }!!
 
         val array = Array(lowestPosition + 1) { y ->
-            Array(rightmostPosition + 1) { x -> if (Point(x, y) in rockPositions) Material.ROCK else Material.AIR }
+            Array(rightmostPosition + 1) { x ->
+                if (Point(x, y) in rockPositions) Material.ROCK else Material.AIR
+            }
         }
-
-        grid = Grid.withPoints(array)
+        return array
     }
 
     fun runSimulation(): Int {
         var sandCounter = -1
         do {
+            if (!sandSource.isFree()) {
+                return sandCounter + 1
+            }
             produceSand()
             sandCounter++
 
@@ -50,19 +59,28 @@ class Cave(private val sandSource: Point, rockPositions: Set<Point>) {
     private fun Point.isFree(): Boolean = grid[this].let { it == null || it == Material.AIR }
 
     private fun moveSand(position: Point): Point? {
-        // gravity is pointing in the opposite direction because of array index order
-        val newPosition =
-            sequenceOf(Vector(0, 1), Vector(-1, 1), Vector(1, 1))
-                .map { position + it }
-                .filter { it.isFree() }
-                .firstOrNull() ?: return null
+        val newPosition = determineNewPosition(position) ?: return null
 
+        updateMaterial(position, newPosition)
+
+        return newPosition
+    }
+
+    private fun determineNewPosition(position: Point) =
+        // gravity is pointing in the opposite direction because of array index order
+        sequenceOf(Vector(0, 1), Vector(-1, 1), Vector(1, 1))
+            .map { position + it }
+            .filter { it.isFree() }
+            .firstOrNull()
+
+    private fun updateMaterial(
+        position: Point,
+        newPosition: Point
+    ) {
         grid[position] = Material.AIR
         if (newPosition isIn grid) {
             grid[newPosition] = Material.SAND
         }
-
-        return newPosition
     }
 
     override fun toString(): String {
@@ -96,14 +114,42 @@ class SandOverflowException(s: String) : Exception(s)
 fun main() {
     val input = readInputLines(Cave::class)
 
-    fun part1(input: List<String>): Int {
-        val rockParallelLineSegment = input.flatMap(::parseLineSegments).flatMap(AxisParallelLineSegment::toListOfPoints).toSet()
-        val cave = Cave(Point(500,0), rockParallelLineSegment)
-
-        return cave.runSimulation().also { println(cave) }
-    }
-
     println("${part1(input)} units of sand come to rest before sand starts flowing into the abyss below.")
+    println("${part2(input)} units of sand come to rest before the sand clogs its source.")
+}
+
+fun part1(input: List<String>): Int {
+    val rockPositions = parseRockPositions(input)
+    val cave = Cave(Point(500, 0), rockPositions)
+
+    return cave.runSimulation().also { println(cave) }
+}
+
+fun part2(input: List<String>): Int {
+    val sandSource = Point(500, 0)
+    val rockPositions = parseRockPositions(input)
+    val ground = determineGroundPositions(sandSource, rockPositions)
+
+    val cave = Cave(sandSource, rockPositions + ground)
+
+    return cave.runSimulation().also { println(cave) }
+}
+
+private fun parseRockPositions(input: List<String>) =
+    input.flatMap(::parseLineSegments).flatMap(AxisParallelLineSegment::toListOfPoints).toSet()
+
+private fun determineGroundPositions(
+    sandSource: Point,
+    rockPositions: Set<Point>
+): List<Point> {
+    val heightOfSandSource = heightOfSandSource(rockPositions)
+
+    // sand can move at most its fall height to the left and to the right
+    val ground = AxisParallelLineSegment(
+        sandSource + Vector(heightOfSandSource, heightOfSandSource),
+        sandSource + Vector(-heightOfSandSource, heightOfSandSource)
+    )
+    return ground.toListOfPoints()
 }
 
 private fun parseLineSegments(string: String): List<AxisParallelLineSegment> {
@@ -114,3 +160,8 @@ private fun parseLineSegments(string: String): List<AxisParallelLineSegment> {
 }
 
 private fun parseCommaSeparatedInts(it: String) = it.split(",").take(2).map(String::toInt)
+
+private fun heightOfSandSource(rockPositions: Set<Point>): Int {
+    val lowestScanPosition = (rockPositions + Point(500, 0)).maxOf { it.y }
+    return lowestScanPosition + 2
+}

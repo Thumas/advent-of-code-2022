@@ -1,7 +1,6 @@
 package de.tek.adventofcode.y2022.day14
 
 import de.tek.adventofcode.y2022.util.math.Point
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 
@@ -65,15 +64,15 @@ class CaveTest : StringSpec({
 
        #####
        -->
-         +
+         o
         ooo
        #####
      */
-    "Given a line of rock with width 5 and 2 cells below the sand source, the simulation throws a SandOverflowException." {
+    "Given a line of rock with width 5 and 2 cells below the sand source, the simulation counts 4 sand units." {
         val rockPositions = listOf(498 to 2, 499 to 2, 500 to 2, 501 to 2, 502 to 2).map(::Point).toSet()
         val cave = Cave(Point(500, 0), rockPositions)
 
-        shouldThrow<SandOverflowException> { cave.runSimulation() }
+        cave.runSimulation() shouldBe 4
     }
 
     /*
@@ -122,5 +121,14 @@ class CaveTest : StringSpec({
 })
 
 class RegolithReservoirTest : StringSpec({
+    val input = """498,4 -> 498,6 -> 496,6
+503,4 -> 502,4 -> 502,9 -> 494,9""".split("\n")
 
+    "Given the example, the result of the first analysis is 24." {
+        part1(input) shouldBe 24
+    }
+
+    "Given the example, the result of the second analysis is 93" {
+        part2(input) shouldBe 93
+    }
 })
