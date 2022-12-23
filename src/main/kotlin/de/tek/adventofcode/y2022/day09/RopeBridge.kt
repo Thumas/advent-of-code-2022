@@ -64,16 +64,6 @@ class Rope(vararg initialKnotPositions: Point) {
 
         return grid.reversed().joinToString("\n") { it.joinToString("") }
     }
-
-    private fun Set<Point>.lowerLeftCorner() = aggregateAlongAxes { projection -> this.minOf(projection) }
-    private fun Set<Point>.upperRightCorner() = aggregateAlongAxes { projection -> this.maxOf(projection) }
-    private fun Set<Point>.aggregateAlongAxes(aggregator: Iterable<Point>.((Point) -> Int) -> Int): Point? {
-        if (this.isEmpty()) return null
-
-        val aggregateHorizontally = this.aggregator { it.x }
-        val aggregateVertically = this.aggregator { it.y }
-        return Point(aggregateHorizontally, aggregateVertically)
-    }
 }
 
 fun main() {

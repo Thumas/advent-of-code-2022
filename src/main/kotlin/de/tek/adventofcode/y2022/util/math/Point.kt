@@ -7,3 +7,14 @@ data class Point(val x: Int, val y: Int) {
 }
 
 val ORIGIN = Point(0,0)
+
+fun Iterable<Point>.lowerLeftCorner() = aggregateAlongAxes { projection -> this.minOf(projection) }
+fun Iterable<Point>.upperRightCorner() = aggregateAlongAxes { projection -> this.maxOf(projection) }
+private fun Iterable<Point>.aggregateAlongAxes(aggregator: Iterable<Point>.((Point) -> Int) -> Int): Point? {
+    if (!this.iterator().hasNext()) return null
+
+    val aggregateHorizontally = this.aggregator { it.x }
+    val aggregateVertically = this.aggregator { it.y }
+
+    return Point(aggregateHorizontally, aggregateVertically)
+}
