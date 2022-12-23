@@ -26,7 +26,7 @@ class Rope(vararg initialKnotPositions: Point) {
         for (i in 1 until knotPositions.size) {
             val difference = knotPositions[i - 1] - knotPositions[i]
 
-            if (InfinityNorm.instance.sizeOf(difference) > 1) {
+            if (InfinityNorm.sizeOf(difference) > 1) {
                 knotPositions[i] = knotPositions[i] + Vector(difference.x.signum(), difference.y.signum())
             }
         }
