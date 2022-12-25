@@ -10,17 +10,16 @@ import org.assertj.core.api.Assertions
 class BeaconExclusionZoneTest : StringSpec({
     "Given a line, parsePointsFromLine returns the expected result." {
         forAll(
-            row("Sensor at x=2, y=18: closest beacon is at x=-2, y=15", Pair(Point(2, 18), Point(-2, 15))),
-            row("Sensor at x=9, y=16: closest beacon is at x=10, y=16", Pair(Point(9, 16), Point(10, 16))),
-            row("Sensor at x=13, y=2: closest beacon is at x=15, y=3", Pair(Point(13, 2), Point(15, 3))),
-            row("Sensor at x=12, y=14: closest beacon is at x=10, y=16", Pair(Point(12, 14), Point(10, 16))),
+            row("Sensor at x=2, y=18: closest beacon is at x=-2, y=15", SensorAndBeacon(Point(2, 18), Point(-2, 15))),
+            row("Sensor at x=9, y=16: closest beacon is at x=10, y=16", SensorAndBeacon(Point(9, 16), Point(10, 16))),
+            row("Sensor at x=13, y=2: closest beacon is at x=15, y=3", SensorAndBeacon(Point(13, 2), Point(15, 3))),
+            row("Sensor at x=12, y=14: closest beacon is at x=10, y=16", SensorAndBeacon(Point(12, 14), Point(10, 16))),
         ) { line, expectedParseResult ->
             parsePointsFromLine(line) shouldBe expectedParseResult
         }
     }
 
-    "Given example, the points covered by the sensors at height 10 are as expected." {
-        val input = """Sensor at x=2, y=18: closest beacon is at x=-2, y=15
+    val exampleInput = """Sensor at x=2, y=18: closest beacon is at x=-2, y=15
 Sensor at x=9, y=16: closest beacon is at x=10, y=16
 Sensor at x=13, y=2: closest beacon is at x=15, y=3
 Sensor at x=12, y=14: closest beacon is at x=10, y=16
@@ -34,10 +33,14 @@ Sensor at x=17, y=20: closest beacon is at x=21, y=22
 Sensor at x=16, y=7: closest beacon is at x=15, y=3
 Sensor at x=14, y=3: closest beacon is at x=15, y=3
 Sensor at x=20, y=1: closest beacon is at x=15, y=3""".split("\n")
+    "Given the example, the points covered by the sensors at height 10 are as expected." {
+        val sensorBeaconPairs = exampleInput.map(::parsePointsFromLine)
 
-        val sensorBeaconPairs = input.map(::parsePointsFromLine)
-
-        Assertions.assertThat(linePointsInSensorRadius(sensorBeaconPairs, 10).toSet())
+        Assertions.assertThat(linePointsInSensorRadius(sensorBeaconPairs, 10))
             .containsExactlyInAnyOrderElementsOf((-2..24).map { x -> Point(x, 10) })
+    }
+
+    "Given the example, the distress beacon has tuning frequency 56000011." {
+        part2(exampleInput, 20) shouldBe 56000011L
     }
 })

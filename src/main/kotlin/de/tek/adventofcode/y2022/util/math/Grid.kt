@@ -4,9 +4,11 @@ open class Grid<S, T>(private val array: Array<Array<S>>, private val transform:
     protected val grid: List<MutableList<T>>
     protected val maxRow = array.size - 1
     protected val maxColumn: Int
+    private val rectangle: Rectangle
 
     init {
         maxColumn = getGridWidth() - 1
+        rectangle = Rectangle(Point(0,0), Point(maxColumn, maxRow))
         grid = (0..maxRow).map { row ->
             (0..maxColumn).map { column -> transform(Point(column, row), array[row][column]) }.toMutableList()
         }
@@ -25,9 +27,7 @@ open class Grid<S, T>(private val array: Array<Array<S>>, private val transform:
 
     override fun iterator(): Iterator<T> = grid.flatten().iterator()
 
-    infix fun contains(position: Point) = position.y in 0..maxRow && position.x in 0..maxColumn
-
-    fun cellsAsPoints() = (0..maxRow).flatMap { row -> (0..maxColumn).map { column -> Point(column, row) } }
+    infix fun contains(position: Point) = position in rectangle
 
     companion object {
         fun <T> withPoints(array: Array<Array<T>>) = GridWithPoints(array)

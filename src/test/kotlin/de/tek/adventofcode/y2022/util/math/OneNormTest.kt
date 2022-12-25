@@ -40,9 +40,9 @@ class OneNormTest : StringSpec({
                 )
             ),
         ) { point, radius, expectedResult ->
-            val ball = OneNorm.ballOfRadius(point, radius)
-            Assertions.assertThat(ball).containsExactlyInAnyOrderElementsOf(expectedResult)
-            ball.size shouldBe expectedResult.size
+            val ball = OneNorm.ballOfRadiusAsSequence(point, radius)
+            Assertions.assertThat(ball.toSet()).containsExactlyInAnyOrderElementsOf(expectedResult)
+            ball.count() shouldBe expectedResult.size
             ball shouldBe expectedResult
         }
     }

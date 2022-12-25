@@ -1,11 +1,35 @@
 package de.tek.adventofcode.y2022.util.math
 
-interface Norm {
-    fun sizeOf(vector: Vector): Int
+abstract class Norm {
+    abstract fun sizeOf(vector: Vector): Int
 
-    fun ballOfRadius(point: Point, radius: Int): Set<Point>
+    abstract fun ballOfRadiusAsSequence(point: Point, radius: Int): Sequence<Point>
 
     infix fun Point.distanceTo(other: Point) = sizeOf(other - this)
 
-    fun ballOfRadius(radius: Int) = ballOfRadius(ORIGIN, radius)
+    inner class Ball(val point: Point, val radius: Int) {
+        infix fun contains(other: Point) = point distanceTo other <= radius
+
+        fun distanceToSphere(other: Point) = radius - (point distanceTo other)
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is Ball) return false
+
+            if (point != other.point) return false
+            if (radius != other.radius) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = point.hashCode()
+            result = 31 * result + radius
+            return result
+        }
+
+        override fun toString(): String {
+            return "${this@Norm::class.simpleName}-Ball(point=$point, radius=$radius)"
+        }
+    }
 }
