@@ -48,7 +48,7 @@ class HeightMap(map: Array<Array<Char>>) : Grid<Char, HeightMap.Cell>(map, { pos
 
         val shortestPath = Graph(edges).findShortestPath(start, end)
 
-        return shortestPath.size - 1
+        return shortestPath.size
     }
 
     private fun computeEdges(): Set<Pair<Cell, Cell>> {
@@ -92,7 +92,7 @@ class HeightMap(map: Array<Array<Char>>) : Grid<Char, HeightMap.Cell>(map, { pos
         val edges = computeEdges()
         val graph = Graph(edges)
 
-        return startEndCombinations.map { graph.findShortestPath(it.first, it.second).size - 1 }.filter { it > 0 }.min()
+        return startEndCombinations.map { graph.findShortestPath(it.first, it.second).size }.filter { it > 0 }.min()
     }
 
     private fun findPairsOfLowestElevationAndGoalCells(): List<Pair<Cell, Cell>> {
