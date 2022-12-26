@@ -1,5 +1,6 @@
 package de.tek.adventofcode.y2022.day16
 
+import de.tek.adventofcode.y2022.util.algorithms.permutations
 import de.tek.adventofcode.y2022.util.math.Edge
 import de.tek.adventofcode.y2022.util.math.Graph
 import de.tek.adventofcode.y2022.util.readInputLines
@@ -62,24 +63,23 @@ class Volcano private constructor(valves: Collection<Valve>, private val startVa
     }
 
     fun calculateMaximumPressureRelease(): Int {
-        val path = valvePathGraph.maximizeValueAlongPathsWithLimitedCosts(
-            startValve,
-            { edge -> edge.weight + 1 },
-            { newCost, vertex -> (30 - newCost) * vertex.flowRate },
-            30
-        )
-        println(path)
-
-        var timeLeft = 30
-        var pressure = 0
-        for (edge in path) {
-            timeLeft -= edge.weight + 1
-            pressure += timeLeft * edge.to.flowRate
-            println("$timeLeft minutes left, valve ${edge.to} will release ${timeLeft * edge.to.flowRate} in total.")
-        }
-
-        return pressure
+        val valvesWithoutStartValve = valvePathGraph.vertices() - startValve
+        return valvesWithoutStartValve.permutations { valves ->
+            toValvePathEdges(valves).sumOf { edge -> edge.weight + 1 } > 30
+        }.map { valvePathWithoutStartValve ->
+            calculateReleasedPressure(valvePathWithoutStartValve)
+        }.max()
     }
+
+    private fun calculateReleasedPressure(valvePathWithoutStartValve: List<Valve>): Int {
+        var timeLeft = 30
+        return toValvePathEdges(valvePathWithoutStartValve).sumOf { edge ->
+            timeLeft -= edge.weight + 1
+            timeLeft * edge.to.flowRate
+        }
+    }
+
+    private fun toValvePathEdges(valves: List<Valve>) = valvePathGraph.toPath(listOf(startValve) + valves)
 
     companion object {
         private val valveAndTunnelsRegex = Regex("(.*?); tunnels* leads* to valves* (.*)")

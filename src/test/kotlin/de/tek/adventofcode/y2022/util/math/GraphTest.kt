@@ -43,32 +43,18 @@ class GraphTest : StringSpec({
         graph.findShortestPath(1, 4) shouldBe listOf(edges[0], edges[1])
     }
 
-    "Given a linear graph, equal costs and values, maximizeValueAlongPathsWithLimitedCosts returns the sub-path with the cost limit." {
-        val edges = listOf(1 to 2, 2 to 3, 3 to 4, 4 to 5).map { (from, to) -> Edge(from, to, 1) }
+    "Given a linear graph and some consecutive vertices, toPath returns the edges between them." {
+        val edges = listOf(1 to 2, 2 to 3, 3 to 4, 4 to 5).map { (from,to) -> Edge(from,to, from)}
         val graph = Graph(edges)
 
-        val result = graph.maximizeValueAlongPathsWithLimitedCosts(
-            1,
-            Edge<Int>::weight,
-            { _, _ -> 1 },
-            3
-        )
-        result shouldBe listOf(edges[0], edges[1], edges[2])
+        graph.toPath(listOf(2,3,4)) shouldBe listOf(edges[1], edges[2])
     }
 
-    "Given two parallel paths, equal cost but different values, maximizeValueAlongPathsWithLimitedCosts returns the path with higher value." {
-        val edges = listOf(1 to 2, 2 to 3, 3 to 4, 4 to 5, 1 to 20, 20 to 30, 30 to 40, 40 to 5).map { (from, to) ->
-            Edge(from, to, 1)
-        }
+    "Given a tree and some consecutive vertices, toPath returns the edges between them." {
+        val edges = listOf(1 to 2, 2 to 3, 3 to 4, 4 to 5, 3 to 6, 6 to 7).map { (from,to) -> Edge(from,to, from)}
         val graph = Graph(edges)
 
-        val result = graph.maximizeValueAlongPathsWithLimitedCosts(
-            1,
-            Edge<Int>::weight,
-            { _, vertex -> vertex },
-            3
-        )
-        result shouldBe listOf(edges[4], edges[5], edges[6])
+        graph.toPath(listOf(2,3,6,7)) shouldBe listOf(edges[1], edges[4], edges[5])
     }
 })
 
