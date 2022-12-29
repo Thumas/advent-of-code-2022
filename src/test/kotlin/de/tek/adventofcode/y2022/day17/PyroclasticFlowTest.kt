@@ -114,7 +114,7 @@ class PyroclasticFlowTest : FunSpec({
     val exampleInput = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>"
 
     context("Given the example input, the rock tower has height 3068.") {
-        part1(exampleInput, rockShapes) shouldBe 3068
+        part1(exampleInput, rockShapes) shouldBe 3068L
     }
 
     context("Given the example input, after 3 rocks, the chamber has the expected string visualization.") {

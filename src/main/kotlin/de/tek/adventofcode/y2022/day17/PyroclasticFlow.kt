@@ -1,5 +1,7 @@
 package de.tek.adventofcode.y2022.day17
 
+import de.tek.adventofcode.y2022.util.arrays.merge
+import de.tek.adventofcode.y2022.util.arrays.splitIndices
 import de.tek.adventofcode.y2022.util.math.*
 import de.tek.adventofcode.y2022.util.readInputLines
 import de.tek.adventofcode.y2022.util.splitByBlankLines
@@ -59,24 +61,38 @@ class Rock(private val shape: RockShape, position: Point) {
 }
 
 /**
- * Models the tall, narrow chamber. Only its content is modelled as data, not the floor or the walls.
+ * Models the tall, narrow chamber. Only its content is modelled as data, not the floor or the walls. The content at the
+ * bottom is removed, if it is no longer needed for collision detection.
  */
 class PyroclasticFlowChamber(
     private val width: Int, flowMovements: List<Direction>, rockShapes: List<RockShape>
 ) {
     private val content = mutableListOf<Array<Material>>()
+
+    private var bottomHeight = 0L
     var highestRockPosition = -1
         private set
 
-    private fun currentChamberHeight() = content.size
+    init {
+        if (width <= 0) throw IllegalArgumentException("Width must be positive, was $width.")
+        if (flowMovements.isEmpty()) throw IllegalArgumentException("List of flow movements must not be empty.")
+        if (rockShapes.isEmpty()) throw IllegalArgumentException("List of rock shapes must not be empty.")
+    }
+
+    fun currentChamberHeight() = bottomHeight + highestRockPosition + 1
 
     private val flowMovements = flowMovements.toInfiniteSequence().iterator()
 
     private val rockShapes = rockShapes.toInfiniteSequence().iterator()
 
     fun dropNextRock() {
-        val rockPosition = Point(2, highestRockPosition + 4)
         val rockShape = rockShapes.next()
+
+        //println("Next rock is\n$rockShape")
+
+        removeUnnecessaryContent()
+
+        val rockPosition = Point(2, highestRockPosition + 4)
         val rock = Rock(rockShape, rockPosition)
 
         do {
@@ -90,7 +106,58 @@ class PyroclasticFlowChamber(
 
         rock.moveIn(Direction.UP)
         addToChamber(rock)
+
+        /*
+        if (content.reversed().filterNot { it.all { material -> material == Material.AIR } }.first()
+                .all { material -> material == Material.ROCK }
+        ) {
+            println("Full row found!")
+            println(this)
+        }*/
+        //println("Current chamber layout is\n$this")
     }
+
+    private fun removeUnnecessaryContent() {
+        if (content.isEmpty()) return
+
+        val lowestRowThatCouldBlockRock = determineLowestRowThatCouldBlockRock()
+
+        if (lowestRowThatCouldBlockRock != -1) {
+            val numberOfRowsToRemove = lowestRowThatCouldBlockRock + 1
+            repeat(numberOfRowsToRemove) { content.removeFirst() }
+
+            // println("Removed $numberOfRowsToRemove rows.")
+
+            bottomHeight += numberOfRowsToRemove
+            highestRockPosition -= numberOfRowsToRemove
+        }
+    }
+
+    private fun determineLowestRowThatCouldBlockRock(): Int {
+        // above the chamber, all cells contain air
+        var reachableConnectedAirSlices = mutableListOf(0 until width)
+
+        for (row in content.indices.reversed()) {
+            val airSlicesFromLastRow = reachableConnectedAirSlices.toList()
+            reachableConnectedAirSlices.clear()
+            val connectedAirCellsInRow = getConnectedAirCellsIn(row)
+
+            // only add connected components of air cells that are reachable from the last set of components
+            for (component in airSlicesFromLastRow) {
+                connectedAirCellsInRow
+                    .filter { it.intersect(component.toSet()).isNotEmpty() }
+                    .forEach(reachableConnectedAirSlices::add)
+            }
+            reachableConnectedAirSlices = reachableConnectedAirSlices.merge().toMutableList()
+
+            if (reachableConnectedAirSlices.isEmpty()) return row
+        }
+
+        return -1
+    }
+
+    private fun getConnectedAirCellsIn(row: Int) =
+        content[row].splitIndices { it == Material.ROCK }.filterNot { it.isEmpty() }
 
     private fun checkCollision(rockPositions: List<Point>) =
         rockPositions.asSequence().filter {
@@ -99,14 +166,14 @@ class PyroclasticFlowChamber(
 
     private fun Point.isBetweenChamberWalls() = x in 0 until width
     private fun Point.isAboveGround() = y >= 0
-    private fun Point.isBelowCurrentChamberHeight() = y < currentChamberHeight()
+    private fun Point.isBelowCurrentChamberHeight() = y < content.size
 
     private fun Point.overlapsRockInChamber() = content[y].mapIndexed { column, material -> column to material }
         .filter { (_, material) -> material == Material.ROCK }.any { (column, _) -> x == column }
 
     private fun addToChamber(rock: Rock) {
         highestRockPosition = max(highestRockPosition, rock.positionOfBottomLeftCorner.y + rock.height - 1)
-        while (highestRockPosition >= currentChamberHeight()) {
+        while (highestRockPosition >= content.size) {
             content.add(Array(width) { Material.AIR })
         }
         for (position in rock.positions()) {
@@ -116,10 +183,15 @@ class PyroclasticFlowChamber(
 
     override fun toString(): String {
         val bottom = '+' + "-".repeat(width) + '+'
-        val visualizedContent =
-            content.map { it.joinToString("") { material -> material.visualization.toString() } }.map { "|$it|" }
+        var visualizedContent =
+            content.map { it.joinToString("") { material -> material.visualization.toString() } }
+                .mapIndexed { distanceFromTop, row -> "|$row| ${bottomHeight + distanceFromTop}" }
 
-        return (listOf(bottom) + visualizedContent).reversed().joinToString("\n")
+        if (bottomHeight == 0L) {
+            visualizedContent = listOf(bottom) + visualizedContent
+        }
+
+        return visualizedContent.reversed().joinToString("\n")
     }
 }
 
@@ -156,17 +228,42 @@ fun main() {
     val input = readInputLines(PyroclasticFlowChamber::class)[0]
 
     println("The tower of rocks will be ${part1(input, rockShapes)} units high after 2022 rocks have stopped falling.")
+    println(
+        "The tower of rocks will be ${
+            part2(
+                input,
+                rockShapes
+            )
+        } units high after 1000000000000 rocks have stopped falling."
+    )
 }
 
-fun part1(input: String, rockShapes: List<RockShape>): Int {
+fun part1(input: String, rockShapes: List<RockShape>): Long {
+    return getChamberHeightAfterSimulation(input, rockShapes, 2022)
+}
+
+fun part2(input: String, rockShapes: List<RockShape>): Long {
+    return getChamberHeightAfterSimulation(input, rockShapes, 1000000000000)
+}
+
+private fun getChamberHeightAfterSimulation(
+    input: String,
+    rockShapes: List<RockShape>,
+    numberOfRocks: Long
+): Long {
     val flowMovements = input.toList().map(::parseFlowDirection)
     val pyroclasticFlowChamber = PyroclasticFlowChamber(7, flowMovements, rockShapes)
 
-    repeat(2022) { pyroclasticFlowChamber.dropNextRock() }
+    LongRange(1, numberOfRocks).forEach {
+        if (it.mod(1000000) == 0) {
+            println("Rock #$it")
+        }
+        pyroclasticFlowChamber.dropNextRock()
+    }
 
     println(pyroclasticFlowChamber)
 
-    return pyroclasticFlowChamber.highestRockPosition + 1
+    return pyroclasticFlowChamber.currentChamberHeight()
 }
 
 fun parseFlowDirection(it: Char) = if (it == '<') Direction.LEFT else Direction.RIGHT
