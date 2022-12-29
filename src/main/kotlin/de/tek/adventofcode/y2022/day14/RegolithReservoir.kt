@@ -10,7 +10,7 @@ enum class Material(private val visualization: Char) {
 }
 
 class Cave(private val sandSource: Point, rockPositions: Set<Point>) {
-    private val grid: GridWithPoints<Material>
+    private val grid: GridWithPoints<Material, Material>
 
     init {
         val array = buildArrayFrom(rockPositions)

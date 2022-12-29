@@ -15,6 +15,7 @@ dependencies {
     val kotestVersion = "5.5.4"
     testImplementation("io.kotest:kotest-runner-junit5-jvm:$kotestVersion")
     testImplementation("io.kotest:kotest-assertions-core:$kotestVersion")
+    testImplementation("io.kotest:kotest-framework-datatest:$kotestVersion")
     testImplementation("org.assertj:assertj-core:3.23.1")
 
 }
