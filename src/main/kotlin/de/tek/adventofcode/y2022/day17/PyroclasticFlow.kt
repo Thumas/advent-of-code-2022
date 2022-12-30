@@ -46,7 +46,7 @@ class RockShape private constructor(private val shapeArray: Array<Array<Char>>) 
     override fun toString() = shapeArray.map { it.toCharArray() }.reversed().joinToString("\n") { it.joinToString("") }
 }
 
-class Rock(private val shape: RockShape, position: Point) {
+class Rock(val shape: RockShape, position: Point) {
     var positionOfBottomLeftCorner = position
         private set
 
@@ -65,56 +65,94 @@ class Rock(private val shape: RockShape, position: Point) {
  * bottom is removed, if it is no longer needed for collision detection.
  */
 class PyroclasticFlowChamber(
-    private val width: Int, flowMovements: List<Direction>, rockShapes: List<RockShape>
+    private val width: Int, flowMovements: FlowMovements, rockShapes: List<RockShape>
 ) {
     private val content = mutableListOf<Array<Material>>()
 
     private var bottomHeight = 0L
-    var highestRockPosition = -1
-        private set
+    private var highestRockPosition = -1
 
     init {
         if (width <= 0) throw IllegalArgumentException("Width must be positive, was $width.")
-        if (flowMovements.isEmpty()) throw IllegalArgumentException("List of flow movements must not be empty.")
         if (rockShapes.isEmpty()) throw IllegalArgumentException("List of rock shapes must not be empty.")
     }
 
-    fun currentChamberHeight() = bottomHeight + highestRockPosition + 1
+    private fun currentChamberHeight() = bottomHeight + highestRockPosition + 1
 
-    private val flowMovements = flowMovements.toInfiniteSequence().iterator()
+    private val flowMovements = flowMovements.iterator()
 
     private val rockShapes = rockShapes.toInfiniteSequence().iterator()
 
-    fun dropNextRock() {
+    private data class ChamberState(val flowMovementIndex: Int, val numberOfRocks: Long, val chamberHeight: Long)
+
+    private val rockShapeAndFlowMovementStatistics = rockShapes.associateWith { mutableSetOf<ChamberState>() }
+
+    fun calculateChamberHeight(totalNumberOfRocks: Long): Long {
+        val (oldChamberState, newChamberState) = findCycle(totalNumberOfRocks) ?: return currentChamberHeight()
+
+        val remainingRocksAfterAllCycles = runCycles(totalNumberOfRocks, newChamberState, oldChamberState)
+
+        // reset statistics, so no further cycle is detected
+        rockShapeAndFlowMovementStatistics.values.forEach { it.clear() }
+        findCycle(remainingRocksAfterAllCycles - 1)
+
+        return currentChamberHeight()
+    }
+
+    /**
+     * Finds a cycle, i.e. a repeated constellation where the top row is full and the same rock shapes is dropped
+     * at the same point in the flow movement sequence. It drops the rock for which the cycle is detected and returns
+     * the number of rocks and the chamber height right before and after the cycle.
+     * If no cycle can be found, null is returned.
+     */
+    private fun findCycle(totalNumberOfRocks: Long): Pair<ChamberState, ChamberState>? {
+        for (numberOfRocks in 0 until totalNumberOfRocks) {
+            val rock = createNextRock()
+
+            val topRowIsFull =
+                content.isEmpty() || content.reversed().filterNot { it.all { material -> material == Material.AIR } }
+                    .first()
+                    .all { material -> material == Material.ROCK }
+
+            val collectedStatisticsForRockShape = rockShapeAndFlowMovementStatistics[rock.shape]!!
+            var result: Pair<ChamberState, ChamberState>? = null
+            do {
+                val (flowIndex, flowDirection) = flowMovements.next()
+
+                if (topRowIsFull && result == null) {
+                    val lastChamberState =
+                        collectedStatisticsForRockShape.firstOrNull { it.flowMovementIndex == flowIndex }
+
+                    val currentChamberState = ChamberState(flowIndex, numberOfRocks, currentChamberHeight())
+
+                    if (lastChamberState != null) {
+                        result = Pair(lastChamberState, currentChamberState)
+                    } else {
+                        collectedStatisticsForRockShape.add(currentChamberState)
+                    }
+                }
+
+                rock.moveIn(flowDirection)
+                if (checkCollision(rock.positions())) {
+                    rock.moveIn(oppositeOf(flowDirection))
+                }
+                rock.moveIn(Direction.DOWN)
+            } while (!checkCollision(rock.positions()))
+            rock.moveIn(Direction.UP)
+
+            addToChamber(rock)
+            removeUnnecessaryContent()
+
+            if (result != null) return result
+        }
+
+        return null
+    }
+
+    private fun createNextRock(): Rock {
         val rockShape = rockShapes.next()
-
-        //println("Next rock is\n$rockShape")
-
-        removeUnnecessaryContent()
-
         val rockPosition = Point(2, highestRockPosition + 4)
-        val rock = Rock(rockShape, rockPosition)
-
-        do {
-            val flowDirection = flowMovements.next()
-            rock.moveIn(flowDirection)
-            if (checkCollision(rock.positions())) {
-                rock.moveIn(oppositeOf(flowDirection))
-            }
-            rock.moveIn(Direction.DOWN)
-        } while (!checkCollision(rock.positions()))
-
-        rock.moveIn(Direction.UP)
-        addToChamber(rock)
-
-        /*
-        if (content.reversed().filterNot { it.all { material -> material == Material.AIR } }.first()
-                .all { material -> material == Material.ROCK }
-        ) {
-            println("Full row found!")
-            println(this)
-        }*/
-        //println("Current chamber layout is\n$this")
+        return Rock(rockShape, rockPosition)
     }
 
     private fun removeUnnecessaryContent() {
@@ -181,7 +219,28 @@ class PyroclasticFlowChamber(
         }
     }
 
+    private fun runCycles(
+        totalNumberOfRocks: Long,
+        newChamberState: ChamberState,
+        oldChamberState: ChamberState
+    ): Long {
+        val remainingRocksBeforeSecondCycle = totalNumberOfRocks - newChamberState.numberOfRocks
+
+        val rockDifference = newChamberState.numberOfRocks - oldChamberState.numberOfRocks
+        val chamberHeightDifference = newChamberState.chamberHeight - oldChamberState.chamberHeight
+
+        val numberOfFullCyclesStillNecessary = remainingRocksBeforeSecondCycle / rockDifference
+        val remainingRocksAfterAllCycles = remainingRocksBeforeSecondCycle.mod(rockDifference)
+
+        val chamberHeightGrowthAfterAllCycles = numberOfFullCyclesStillNecessary * chamberHeightDifference
+        bottomHeight += chamberHeightGrowthAfterAllCycles
+
+        return remainingRocksAfterAllCycles
+    }
+
     override fun toString(): String {
+        if (content.isEmpty()) return "Chamber is empty."
+
         val bottom = '+' + "-".repeat(width) + '+'
         var visualizedContent =
             content.map { it.joinToString("") { material -> material.visualization.toString() } }
@@ -229,12 +288,8 @@ fun main() {
 
     println("The tower of rocks will be ${part1(input, rockShapes)} units high after 2022 rocks have stopped falling.")
     println(
-        "The tower of rocks will be ${
-            part2(
-                input,
-                rockShapes
-            )
-        } units high after 1000000000000 rocks have stopped falling."
+        "The tower of rocks will be ${part2(input, rockShapes)} units high " +
+                "after 1000000000000 rocks have stopped falling."
     )
 }
 
@@ -251,19 +306,34 @@ private fun getChamberHeightAfterSimulation(
     rockShapes: List<RockShape>,
     numberOfRocks: Long
 ): Long {
-    val flowMovements = input.toList().map(::parseFlowDirection)
+    val flowMovements = FlowMovements.parseFlowDirections(input)
     val pyroclasticFlowChamber = PyroclasticFlowChamber(7, flowMovements, rockShapes)
 
-    LongRange(1, numberOfRocks).forEach {
-        if (it.mod(1000000) == 0) {
-            println("Rock #$it")
-        }
-        pyroclasticFlowChamber.dropNextRock()
-    }
-
-    println(pyroclasticFlowChamber)
-
-    return pyroclasticFlowChamber.currentChamberHeight()
+    return pyroclasticFlowChamber.calculateChamberHeight(numberOfRocks)
 }
 
-fun parseFlowDirection(it: Char) = if (it == '<') Direction.LEFT else Direction.RIGHT
+class FlowMovements(private val directions: List<Direction>) : Iterable<Pair<Int, Direction>> {
+    init {
+        if (directions.isEmpty()) throw IllegalArgumentException("List of flow movements must not be empty.")
+    }
+
+    override fun iterator() = directions.toInfiniteIndexedSequence().iterator()
+
+    companion object {
+        fun parseFlowDirections(string: String) = string.toList().map(::parseFlowDirection).let(::FlowMovements)
+        private fun parseFlowDirection(char: Char) = when (char) {
+            '<' -> Direction.LEFT
+            '>' -> Direction.RIGHT
+            else -> throw IllegalArgumentException("Cannot parse flow direction from $char.")
+        }
+    }
+}
+
+
+fun <T> Iterable<T>.toInfiniteIndexedSequence() = sequence {
+    while (true) {
+        for ((index, item) in this@toInfiniteIndexedSequence.withIndex()) {
+            yield(index to item)
+        }
+    }
+}

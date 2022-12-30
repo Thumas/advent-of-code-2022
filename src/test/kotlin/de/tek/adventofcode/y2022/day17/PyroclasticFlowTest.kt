@@ -45,7 +45,7 @@ class RockShapeTest : FunSpec({
     }
 })
 
-class PyroclasticFlowChamberTest :FunSpec({
+class PyroclasticFlowChamberTest : FunSpec({
     val iBlock = """#
                    |#
                    |#
@@ -66,26 +66,26 @@ class PyroclasticFlowChamberTest :FunSpec({
 +-------+
      */
     context("Given two stacked i-blocks and a square block right of them, then the highest rock position is 7.") {
-        val flowMovements = listOf(
-            Direction.LEFT,
-            Direction.LEFT,
-            Direction.LEFT,
-            Direction.LEFT,
-            Direction.LEFT,
-            Direction.LEFT,
-            Direction.LEFT,
-            Direction.LEFT,
-            Direction.RIGHT,
-            Direction.RIGHT,
-            Direction.RIGHT,
-            Direction.RIGHT
+        val flowMovements = FlowMovements(
+            listOf(
+                Direction.LEFT,
+                Direction.LEFT,
+                Direction.LEFT,
+                Direction.LEFT,
+                Direction.LEFT,
+                Direction.LEFT,
+                Direction.LEFT,
+                Direction.LEFT,
+                Direction.RIGHT,
+                Direction.RIGHT,
+                Direction.RIGHT,
+                Direction.RIGHT
+            )
         )
         val rockShapes = listOf(iBlock, iBlock, squareBlock).map(RockShape::parseFrom)
         val pyroclasticFlowChamber = PyroclasticFlowChamber(7, flowMovements, rockShapes)
 
-        repeat(3) { pyroclasticFlowChamber.dropNextRock() }
-
-        pyroclasticFlowChamber.highestRockPosition shouldBe 7
+        pyroclasticFlowChamber.calculateChamberHeight(3) shouldBe 8
     }
 })
 
@@ -118,18 +118,18 @@ class PyroclasticFlowTest : FunSpec({
     }
 
     context("Given the example input, after 3 rocks, the chamber has the expected string visualization.") {
-        val expectedVisualization = """|..#....|
-|..#....|
-|####...|
-|..###..|
-|...#...|
-|..####.|
+        val expectedVisualization = """|..#....| 5
+|..#....| 4
+|####...| 3
+|..###..| 2
+|...#...| 1
+|..####.| 0
 +-------+"""
 
-        val flowMovements = exampleInput.toList().map(::parseFlowDirection)
+        val flowMovements = FlowMovements.parseFlowDirections(exampleInput)
         val pyroclasticFlowChamber = PyroclasticFlowChamber(7, flowMovements, rockShapes)
 
-        repeat(3) { pyroclasticFlowChamber.dropNextRock() }
+        pyroclasticFlowChamber.calculateChamberHeight(3)
 
         pyroclasticFlowChamber.toString() shouldBe expectedVisualization
     }
